@@ -2,6 +2,7 @@ type MemorySearchResult = {
   id?: string;
   text?: string;
   content?: string;
+  memory?: string;
   metadata?: Record<string, unknown>;
   score?: number;
 };
@@ -32,12 +33,16 @@ async function httpPost<T>(path: string, body: unknown): Promise<T> {
 const memoryClient: MemoryClient = {
   async search(query, options) {
     try {
-      const result = await httpPost<MemorySearchResult[]>("/search", {
+      const result = await httpPost<{ results?: MemorySearchResult[] } | MemorySearchResult[]>("/search", {
         query,
         user_id: options?.user_id,
         limit: options?.limit ?? 5,
       });
-      return result;
+      const rawList = Array.isArray(result) ? result : result?.results ?? [];
+      return rawList.map((item) => ({
+        ...item,
+        text: item.text ?? item.memory ?? item.content,
+      }));
     } catch (error) {
       console.warn("[memory] search failed", error);
       return [];

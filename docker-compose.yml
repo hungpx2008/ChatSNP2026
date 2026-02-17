@@ -35,23 +35,25 @@ services:
 
   mem0:
     build:
-      context: ../mem0
+      context: ./mem0
       dockerfile: server/dev.Dockerfile
     container_name: chatsnp-mem0
     env_file:
-      - ../mem0/server/.env
+      - ./mem0/server/.env
     environment:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - QDRANT_COLLECTION=mem0_memories
+      - EMBEDDER_MODEL=text-embedding-3-large
+      - EMBEDDING_DIM=3072
       - GRAPH_STORE_PROVIDER=off
       - HISTORY_DB_PATH=/app/history/history.db
     ports:
       - "8888:8000"
     volumes:
-      - ../mem0/server/history:/app/history
-      - ../mem0/server:/app
-      - ../mem0/mem0:/app/packages/mem0
+      - ./mem0/server/history:/app/history
+      - ./mem0/server:/app
+      - ./mem0/mem0:/app/packages/mem0
     depends_on:
       qdrant:
         condition: service_started
