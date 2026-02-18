@@ -39,11 +39,13 @@ export async function getHelp({
   userId,
   photoDataUri,
 }: GetHelpParams): Promise<HelpResult> {
+  const memoryUserId = userId || "test-user";
+
   const cacheKey = JSON.stringify({
     question,
     department,
     sessionId,
-    userId,
+    userId: memoryUserId,
     photoHash: photoDataUri ? createHash("sha256").update(photoDataUri).digest("hex") : undefined,
   });
   const cached = completedRequests.get(cacheKey);
@@ -63,11 +65,11 @@ export async function getHelp({
     try {
       const memory = await getMemory();
 
-      const memoryUserId = userId;
       let longTermContext: any[] = [];
       if (memoryUserId) {
         try {
-          longTermContext = await memory.search(question, { user_id: memoryUserId, limit: 5 });
+          // Keep top 3 to reduce tokens and latency
+          longTermContext = await memory.search(question, { user_id: memoryUserId, limit: 3 });
         } catch (error) {
           console.error("[getHelp] Mem0 search failed", error);
         }
@@ -86,9 +88,8 @@ export async function getHelp({
         const longTermText = longTermContext
           .map((item, index) => {
             const text = item?.text ?? item?.content ?? "";
-            const meta = item?.metadata ? JSON.stringify(item.metadata) : "";
             const score = typeof item?.score === "number" ? ` (score: ${item.score.toFixed(3)})` : "";
-            return `#${index + 1}${score}\n${text}${meta ? `\nmeta: ${meta}` : ""}`;
+            return `#${index + 1}${score}\n${text}`;
           })
           .join("\n\n");
         if (longTermText.trim()) {
@@ -119,14 +120,18 @@ export async function getHelp({
             photoDataUri,
             context: contextBlocks,
           })
-        : await getContextualHelp({ question, department, context: contextBlocks });
+        : await getContextualHelp({ question, department, context: contextBlocks, user_id: memoryUserId });
 
       if (memoryUserId) {
+        // Truncate answer aggressively to avoid long writes and reduce token/risk of irrelevant noise
+        const trimmedAnswer =
+          llmResult.response.length > 200 ? `${llmResult.response.slice(0, 200)}...` : llmResult.response;
+        const memoryText = `${question}\nASSISTANT: ${trimmedAnswer}`;
         void memory
           .add({
             user_id: memoryUserId,
-            text: question,
-            metadata: { session_id: sessionId, department, response: llmResult.response },
+            text: memoryText,
+            metadata: { session_id: sessionId, department },
           })
           .catch((error: unknown) => {
             console.error("[getHelp] Failed to persist to Mem0", error);

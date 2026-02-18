@@ -48,6 +48,19 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*swigva
 # Initialize logger early for util functions
 logger = logging.getLogger(__name__)
 
+
+def _build_fallback_memory_actions(messages):
+    """If LLM extraction returns nothing, create a simple ADD action with concatenated messages."""
+    combined = "\n".join(
+        f"{msg.get('role', '').upper()}: {msg.get('content', '')}"
+        for msg in messages
+        if msg.get("content")
+    )
+    if not combined.strip():
+        return {}
+    return {"memory": [{"id": str(uuid.uuid4()), "text": combined, "action": "ADD"}]}
+
+
 # Response formats compatible with LM Studio (expects json_schema/text, not json_object)
 FACT_RESPONSE_FORMAT = {
     "type": "json_schema",
@@ -59,6 +72,7 @@ FACT_RESPONSE_FORMAT = {
                 "facts": {"type": "array", "items": {"type": "string"}},
             },
             "required": ["facts"],
+            "additionalProperties": False,
         },
     },
 }
@@ -78,12 +92,15 @@ MEMORY_ACTION_RESPONSE_FORMAT = {
                             "id": {"type": "string"},
                             "text": {"type": "string"},
                             "action": {"type": "string"},
-                            "metadata": {"type": "object"},
+                            "metadata": {"type": "object", "additionalProperties": False},
                         },
-                        "required": ["text"],
+                        "required": ["id", "text", "action"],
+                        "additionalProperties": False,
                     },
                 }
             },
+            "required": ["memory"],
+            "additionalProperties": False,
         },
     },
 }
@@ -560,6 +577,12 @@ class Memory(MemoryBase):
         else:
             new_memories_with_actions = {}
 
+        # Fallback: if no memory actions returned, create a simple ADD entry from raw messages
+        if not new_memories_with_actions.get("memory"):
+            fallback = _build_fallback_memory_actions(messages)
+            if fallback:
+                new_memories_with_actions = fallback
+
         returned_memories = []
         try:
             for resp in new_memories_with_actions.get("memory", []):
@@ -570,7 +593,8 @@ class Memory(MemoryBase):
                         logger.info("Skipping memory entry because of empty `text` field.")
                         continue
 
-                    event_type = resp.get("event")
+                    # Accept either 'event' or 'action' from the LLM schema
+                    event_type = resp.get("event") or resp.get("action")
                     if event_type == "ADD":
                         memory_id = self._create_memory(
                             data=action_text,
@@ -1589,6 +1613,12 @@ class AsyncMemory(MemoryBase):
         else:
             new_memories_with_actions = {}
 
+        # Fallback: if no memory actions returned, create a simple ADD entry from raw messages
+        if not new_memories_with_actions.get("memory"):
+            fallback = _build_fallback_memory_actions(messages)
+            if fallback:
+                new_memories_with_actions = fallback
+
         returned_memories = []
         try:
             memory_tasks = []
@@ -1598,7 +1628,8 @@ class AsyncMemory(MemoryBase):
                     action_text = resp.get("text")
                     if not action_text:
                         continue
-                    event_type = resp.get("event")
+                    # Accept either 'event' or 'action' from the LLM schema
+                    event_type = resp.get("event") or resp.get("action")
 
                     if event_type == "ADD":
                         task = asyncio.create_task(

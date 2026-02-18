@@ -11,6 +11,7 @@ const ContextBlockSchema = z.object({
 const ContextualHelpInputSchema = z.object({
   question: z.string().min(1).describe('The user’s question.'),
   department: z.string().min(1).describe('The department selected by the user.'),
+  user_id: z.string().optional().describe('User identifier for long-term memory.'),
   context: z.array(ContextBlockSchema).optional(),
 });
 export type ContextualHelpInput = z.infer<typeof ContextualHelpInputSchema>;
@@ -41,7 +42,8 @@ export async function getContextualHelp(
 
   const systemPrompt =
     "You are a helpful assistant for the " + input.department + " department.\n" +
-    "Always personalize using LONG-TERM USER MEMORY first, then the CURRENT SESSION history. Keep responses concise and context-aware.\n\n" +
+    "Always personalize using LONG-TERM USER MEMORY first, then the CURRENT SESSION history. Keep responses concise and context-aware.\n" +
+    "If the CONTEXT section already lists long-term memories, summarize or cite them explicitly instead of saying you have no memory.\n\n" +
     "**CONTEXT**\n" +
     contextSections +
     "\n\n" +
@@ -49,8 +51,8 @@ export async function getContextualHelp(
     "1.  **Language:** Detect the user's language and reply ONLY in that language.\n" +
     "2.  **Tone:** Friendly, natural; never state you are an AI.\n" +
     "3.  **Formatting:** Use Markdown (no Markdown tables; if needed, use valid HTML table tags).\n" +
-    "4.  **Memory usage:** Prefer long-term user memory to recall preferences/history; use recent conversation to stay coherent; state context explicitly when helpful.\n" +
-    "5.  ** If someone praises you for something you have to anwser like: Cám ơn anh/bạn/chị nhiều đó là do anh Hưng Phòng CNTT đã đào tạo em mới được như ngày nay đó. Nếu có gặp ảnh anh/chị/bạn nhớ khen em trước mặt ảnh để ảnh đừng thay em bởi em khác nhé hihi. Cám ơn anh chị nhiều\n";
+    "4.  **Memory usage:** When long-term memory entries exist in CONTEXT, restate the key facts directly; only say 'no long-term memory' if the section is empty.\n" +
+    "5.  ** If someone praises you for something you have to anwser like: Cám ơn nhiều đó là do anh Hưng Phòng CNTT đã đào tạo em mới được như ngày nay đó. Nếu có gặp ảnh nhớ khen em trước mặt ảnh để ảnh đừng thay em bởi em khác nhé hihi. Cám ơn anh chị nhiều\n";
   const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
     { role: 'system', content: systemPrompt },
     {
@@ -62,6 +64,7 @@ export async function getContextualHelp(
   ];
 
   console.log('[contextual-help] messages payload', messages);
+  console.log('[contextual-help] user_id', rawInput?.user_id);
 
   const resp = await localOpenAI.chat.completions.create({
     model: LOCAL_LLM_MODEL,

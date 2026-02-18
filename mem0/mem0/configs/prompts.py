@@ -261,6 +261,10 @@ Please note to return the IDs in the output from the input IDs only and do not g
 
 
 3. **Delete**: If the retrieved facts contain information that contradicts the information present in the memory, then you have to delete it. Or if the direction is to delete the memory, then you have to delete it.
+# Extra deletion rules:
+# - Nếu người dùng nói một ký ức là sai/không đúng, hoặc yêu cầu “quên/đừng nhớ/không còn …”, hãy đánh dấu ký ức khớp đó với action DELETE.
+# - Chỉ xoá các ký ức bị phủ định rõ ràng; giữ nguyên những ký ức không bị phủ định.
+# - Giữ nguyên ngôn ngữ gốc của ký ức khi cập nhật hoặc xoá.
 Please note to return the IDs in the output from the input IDs only and do not generate any new ID.
 - **Example**:
     - Old Memory:
@@ -292,6 +296,9 @@ Please note to return the IDs in the output from the input IDs only and do not g
         }
 
 4. **No Change**: If the retrieved facts contain information that is already present in the memory, then you do not need to make any changes.
+
+# OUTPUT FORMAT
+# Trả về JSON với key "memory": danh sách object {id, text, action (ADD/UPDATE/DELETE/NONE), metadata? }.
 - **Example**:
     - Old Memory:
         [
