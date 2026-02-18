@@ -123,6 +123,7 @@ class SearchRequest(BaseModel):
     run_id: Optional[str] = None
     agent_id: Optional[str] = None
     filters: Optional[Dict[str, Any]] = None
+    limit: Optional[int] = Field(default=5, description="Max results to return (server caps at 10).")
 
 
 @app.post("/configure", summary="Configure Mem0")
@@ -182,6 +183,9 @@ def search_memories(search_req: SearchRequest):
     """Search for memories based on a query."""
     try:
         params = {k: v for k, v in search_req.model_dump().items() if v is not None and k != "query"}
+        if "limit" in params:
+            # Cap to avoid overloading context/token
+            params["limit"] = min(int(params["limit"]), 10)
         return MEMORY_INSTANCE.search(query=search_req.query, **params)
     except Exception as e:
         logging.exception("Error in search_memories:")
