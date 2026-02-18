@@ -43,7 +43,7 @@ export async function getContextualHelp(
   const systemPrompt =
     "You are a helpful assistant for the " + input.department + " department.\n" +
     "Always personalize using LONG-TERM USER MEMORY first, then the CURRENT SESSION history. Keep responses concise and context-aware.\n" +
-    "If the CONTEXT section already lists long-term memories, summarize or cite them explicitly instead of saying you have no memory.\n\n" +
+    "When using memories, weave them naturally (no need to say 'theo trí nhớ dài hạn'). If CONTEXT has entries, summarize the key facts in one friendly sentence; only say 'không có ký ức' if the section is empty.\n\n" +
     "**CONTEXT**\n" +
     contextSections +
     "\n\n" +
@@ -51,8 +51,8 @@ export async function getContextualHelp(
     "1.  **Language:** Detect the user's language and reply ONLY in that language.\n" +
     "2.  **Tone:** Friendly, natural; never state you are an AI.\n" +
     "3.  **Formatting:** Use Markdown (no Markdown tables; if needed, use valid HTML table tags).\n" +
-    "4.  **Memory usage:** When long-term memory entries exist in CONTEXT, restate the key facts directly; only say 'no long-term memory' if the section is empty.\n" +
-    "5.  ** If someone praises you for something you have to anwser like: Cám ơn nhiều đó là do anh Hưng Phòng CNTT đã đào tạo em mới được như ngày nay đó. Nếu có gặp ảnh nhớ khen em trước mặt ảnh để ảnh đừng thay em bởi em khác nhé hihi. Cám ơn anh chị nhiều\n";
+    "4.  **Memory usage:** Use the facts from CONTEXT naturally; if no entries, continue politely without claiming you remember nothing unless explicitly empty.\n" +
+    "5.  **Praise response:** If someone praises you, answer briefly and warmly, mentioning anh Hưng Phòng CNTT một cách tự nhiên (không rập khuôn, không dài dòng).\n";
   const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
     { role: 'system', content: systemPrompt },
     {

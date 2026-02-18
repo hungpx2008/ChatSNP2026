@@ -40,6 +40,8 @@ export async function getHelp({
   photoDataUri,
 }: GetHelpParams): Promise<HelpResult> {
   const memoryUserId = userId || "test-user";
+  const truncate = (text: string, limit = 400) =>
+    text.length > limit ? `${text.slice(0, limit)}...` : text;
 
   const cacheKey = JSON.stringify({
     question,
@@ -68,8 +70,8 @@ export async function getHelp({
       let longTermContext: any[] = [];
       if (memoryUserId) {
         try {
-          // Keep top 3 to reduce tokens and latency
-          longTermContext = await memory.search(question, { user_id: memoryUserId, limit: 3 });
+          // Keep top 5 most similar for context
+          longTermContext = await memory.search(question, { user_id: memoryUserId, limit: 5 });
         } catch (error) {
           console.error("[getHelp] Mem0 search failed", error);
         }
@@ -87,7 +89,7 @@ export async function getHelp({
       if (Array.isArray(longTermContext) && longTermContext.length) {
         const longTermText = longTermContext
           .map((item, index) => {
-            const text = item?.text ?? item?.content ?? "";
+            const text = truncate(item?.text ?? item?.content ?? "", 500);
             const score = typeof item?.score === "number" ? ` (score: ${item.score.toFixed(3)})` : "";
             return `#${index + 1}${score}\n${text}`;
           })
