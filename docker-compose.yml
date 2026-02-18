@@ -44,8 +44,9 @@ services:
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
       - QDRANT_COLLECTION=mem0_memories
-      - EMBEDDER_MODEL=text-embedding-3-large
-      - EMBEDDING_DIM=3072
+      - EMBEDDER_PROVIDER=huggingface
+      - EMBEDDER_MODEL=thanhtantran/Vietnamese_Embedding_v2
+      - EMBEDDING_DIM=1024
       - GRAPH_STORE_PROVIDER=off
       - HISTORY_DB_PATH=/app/history/history.db
     ports:
